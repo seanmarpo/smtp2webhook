@@ -107,13 +107,6 @@ X-Custom-Header = "custom-value"
 User-Agent = "smtp2webhook/0.1.0"
 ```
 
-Common use cases for custom headers:
-- **Authentication**: `Authorization`, `X-API-Key`
-- **Request identification**: `X-Request-ID`, `X-Correlation-ID`
-- **Custom metadata**: `X-Source`, `X-Environment`
-- **Content negotiation**: `Accept`, `Accept-Language`
-```
-
 ## Usage
 
 Run the server with the default config file (`config.toml`):
