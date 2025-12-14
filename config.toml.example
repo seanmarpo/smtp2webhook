@@ -1,0 +1,26 @@
+# SMTP2Webhook Configuration File
+
+[smtp]
+# The address to bind the SMTP server to
+bind_address = "127.0.0.1:2525"
+# Server hostname
+hostname = "localhost"
+
+[webhook]
+# The HTTP endpoint to POST emails to
+url = "http://localhost:8080/webhook"
+# Number of retry attempts on failure
+max_retries = 3
+# Timeout in seconds for each request
+timeout_secs = 30
+
+# Optional: Custom HTTP headers to send with webhook requests
+# Uncomment and modify as needed for authentication, etc.
+# [webhook.headers]
+# Authorization = "Bearer your-token-here"
+# X-API-Key = "your-api-key"
+# X-Custom-Header = "custom-value"
+
+[logging]
+# Log level: trace, debug, info, warn, error
+level = "info"
