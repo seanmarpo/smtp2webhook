@@ -20,15 +20,18 @@ impl WebhookClient {
     }
 
     pub async fn send_email(&self, email: &Email) -> Result<()> {
+        let mut last_error = None;
+
         for attempt in 0..=self.config.max_retries {
             if attempt > 0 {
                 warn!(
                     "Retry attempt {}/{} for email from {}",
                     attempt, self.config.max_retries, email.from
                 );
-                // Exponential backoff: 1s, 2s, 4s, etc.
-                let delay = Duration::from_secs(2u64.pow(attempt - 1));
-                tokio::time::sleep(delay).await;
+
+                // Exponential backoff with max cap of 30 seconds: 1s, 2s, 4s, 8s, 16s, 30s, 30s...
+                let delay_secs = 2u64.pow(attempt - 1).min(30);
+                tokio::time::sleep(Duration::from_secs(delay_secs)).await;
             }
 
             match self.send_request(email).await {
@@ -43,21 +46,19 @@ impl WebhookClient {
                         self.config.max_retries + 1,
                         e
                     );
-
-                    // If this was the last attempt, return the error
-                    if attempt == self.config.max_retries {
-                        error!(
-                            "Failed to send email from {} to webhook after {} attempts. Dropping email.",
-                            email.from,
-                            self.config.max_retries + 1
-                        );
-                        return Err(e);
-                    }
+                    last_error = Some(e);
                 }
             }
         }
 
-        unreachable!("Loop should always return")
+        // All retries exhausted
+        let error = last_error.unwrap_or_else(|| anyhow::anyhow!("Unknown error"));
+        error!(
+            "Failed to send email from {} to webhook after {} attempts. Dropping email.",
+            email.from,
+            self.config.max_retries + 1
+        );
+        Err(error)
     }
 
     async fn send_request(&self, email: &Email) -> Result<()> {

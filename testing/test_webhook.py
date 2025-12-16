@@ -46,10 +46,22 @@ class WebhookHandler(BaseHTTPRequestHandler):
             print(f"From: {data.get('from', 'N/A')}")
             print(f"To: {', '.join(data.get('to', []))}")
             print(f"Subject: {data.get('subject', 'N/A')}")
-            print("\nEmail Headers:")
-            for key, value in data.get("headers", {}).items():
-                print(f"  {key}: {value}")
-            print(f"\nBody:\n{data.get('body', 'N/A')}")
+
+            # Display attachments if any
+            attachments = data.get("attachments", [])
+            if attachments:
+                print(f"\n📎 Attachments ({len(attachments)}):")
+                for i, filename in enumerate(attachments, 1):
+                    print(f"  {i}. {filename}")
+
+            # Display body
+            body = data.get("body", "")
+            if body:
+                print(f"\n📝 Body ({len(body)} chars):")
+                print(body)
+            else:
+                print(f"\n📝 Body: (empty)")
+
             print("=" * 80 + "\n")
 
             self.send_response(200)

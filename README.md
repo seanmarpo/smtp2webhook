@@ -136,9 +136,59 @@ Emails are sent to the webhook as JSON POST requests with the following structur
   "from": "sender@example.com",
   "to": ["recipient@example.com"],
   "subject": "Email Subject",
-  "body": "Email body content",
+  "body": "Plain text email body content",
+  "attachments": ["document.pdf", "image.png"]
 }
 ```
+
+### Payload Fields
+
+- **`from`** - Sender email address
+- **`to`** - Array of recipient email addresses
+- **`subject`** - Email subject line
+- **`body`** - Plain text email body (HTML emails are automatically converted to plain text)
+- **`attachments`** - Array of attachment filenames (optional, omitted if empty)
+
+### Content Type Handling
+
+smtp2webhook properly handles various email content types and always delivers plain text:
+
+- **Plain Text** - Delivered as-is in the `body` field
+- **HTML** - HTML tags are stripped and converted to plain text
+- **Multipart** - Plain text version is used; if only HTML is present, it's converted to plain text
+- **Encoded Content** - Automatically decodes Base64 and Quoted-Printable encodings
+- **Attachments** - Filenames are listed in the `attachments` array (attachment content is not included)
+
+This ensures consistent plain text output suitable for webhooks like Discord, Slack, and other services that expect text content.
+
+## Testing
+
+A comprehensive test suite is included in the `testing/` directory to verify proper handling of different email content types and encodings.
+
+### Running Tests
+
+1. Start the SMTP server in one terminal:
+   ```bash
+   cargo run
+   ```
+
+2. Start the test webhook server in another terminal:
+   ```bash
+   ./testing/test_webhook.py
+   ```
+
+3. Run all tests:
+   ```bash
+   ./testing/run_all_tests.sh
+   ```
+
+Or run individual test scripts:
+- `./testing/test_send_email.sh` - Plain text email
+- `./testing/test_html_email.sh` - HTML email
+- `./testing/test_multipart_email.sh` - Multipart (text + HTML)
+- `./testing/test_base64_email.sh` - Base64 encoded content
+- `./testing/test_quoted_printable_email.sh` - Quoted-printable encoding
+- `./testing/test_attachment_email.sh` - Email with attachments
 
 ## Error Handling
 
