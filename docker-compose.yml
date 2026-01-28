@@ -1,0 +1,13 @@
+version: "3.8"
+
+services:
+  smtp2webhook:
+    image: ghcr.io/seanmarpo/smtp2webhook:latest
+    container_name: smtp2webhook
+    restart: unless-stopped
+    ports:
+      - "2525:2525"
+    volumes:
+      - ./config.toml:/app/config.toml:ro
+    environment:
+      - RUST_LOG=info

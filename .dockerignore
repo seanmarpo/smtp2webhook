@@ -1,0 +1,41 @@
+# Rust build artifacts
+target/
+**/*.rs.bk
+*.pdb
+
+# Cargo lock for libraries (keep for applications)
+# Cargo.lock
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Git
+.git/
+.gitignore
+.github/
+
+# Documentation
+README.md
+LICENSE
+
+# Testing
+testing/
+
+# Configuration files (will be mounted)
+config.toml
+
+# Docker files
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

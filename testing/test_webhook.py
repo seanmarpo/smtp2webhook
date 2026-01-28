@@ -60,7 +60,7 @@ class WebhookHandler(BaseHTTPRequestHandler):
                 print(f"\n📝 Body ({len(body)} chars):")
                 print(body)
             else:
-                print(f"\n📝 Body: (empty)")
+                print("\n📝 Body: (empty)")
 
             print("=" * 80 + "\n")
 
