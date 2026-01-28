@@ -124,6 +124,36 @@ else
     echo -e "${YELLOW}  Container is running, port mapping appears correct${NC}"
 fi
 
+# Test health check
+echo -e "\n8. Testing container health check..."
+HEALTH_OK=false
+
+# Wait a bit for health check to run
+sleep 3
+
+# Check Docker's health status
+HEALTH_STATUS=$(docker inspect --format='{{.State.Health.Status}}' "$CONTAINER_NAME" 2>/dev/null || echo "none")
+if [ "$HEALTH_STATUS" = "healthy" ] || [ "$HEALTH_STATUS" = "starting" ]; then
+    echo -e "${GREEN}✓ Health check status: $HEALTH_STATUS${NC}"
+    HEALTH_OK=true
+elif [ "$HEALTH_STATUS" = "none" ]; then
+    echo -e "${YELLOW}⚠ No health check configured${NC}"
+else
+    echo -e "${YELLOW}⚠ Health check status: $HEALTH_STATUS${NC}"
+fi
+
+# Manually test the health check command
+if docker exec "$CONTAINER_NAME" sh -c "nc -z localhost 2525" 2>/dev/null; then
+    echo -e "${GREEN}✓ Health check command works${NC}"
+    HEALTH_OK=true
+else
+    echo -e "${YELLOW}⚠ Health check command could not be verified${NC}"
+fi
+
+if [ "$HEALTH_OK" = false ]; then
+    echo -e "${YELLOW}⚠ Health check verification inconclusive${NC}"
+fi
+
 # Show container info
 echo -e "\n${GREEN}================================${NC}"
 echo -e "${GREEN}Simple smoke test passed! ✓${NC}"

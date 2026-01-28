@@ -22,8 +22,8 @@ RUN cargo build --release
 # Runtime stage - Minimal Alpine (~15MB total)
 FROM alpine:latest
 
-# Install only CA certificates for HTTPS webhook requests
-RUN apk add --no-cache ca-certificates tzdata && \
+# Install CA certificates and netcat for healthcheck
+RUN apk add --no-cache ca-certificates tzdata netcat-openbsd && \
     rm -rf /var/cache/apk/*
 
 # Create a non-root user
@@ -44,6 +44,10 @@ USER smtp2webhook
 
 # Expose SMTP port (default 2525, can be overridden via config)
 EXPOSE 2525
+
+# Healthcheck - verify SMTP port is accepting connections
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD nc -z localhost 2525 || exit 1
 
 # Run the application
 ENTRYPOINT ["/app/smtp2webhook"]

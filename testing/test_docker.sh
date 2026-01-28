@@ -18,6 +18,12 @@ TEST_PORT="12525"
 WEBHOOK_PORT="18080"
 WEBHOOK_CONTAINER="webhook-test-receiver"
 
+# Check for rebuild flag
+REBUILD_IMAGE=false
+if [ "$1" = "--rebuild" ] || [ "$1" = "-r" ]; then
+    REBUILD_IMAGE=true
+fi
+
 # Cleanup function
 cleanup() {
     echo -e "\n${YELLOW}Cleaning up...${NC}"
@@ -39,13 +45,23 @@ if ! docker info > /dev/null 2>&1; then
     exit 1
 fi
 
-# Check if image exists
-if ! docker image inspect "$IMAGE_NAME" > /dev/null 2>&1; then
+# Build or check image
+if [ "$REBUILD_IMAGE" = true ]; then
+    echo -e "${YELLOW}Rebuilding image $IMAGE_NAME...${NC}"
+    if ! docker build -t "$IMAGE_NAME" ..; then
+        echo -e "${RED}Error: Failed to build Docker image${NC}"
+        exit 1
+    fi
+    echo -e "${GREEN}✓ Image rebuilt successfully${NC}"
+elif ! docker image inspect "$IMAGE_NAME" > /dev/null 2>&1; then
     echo -e "${YELLOW}Image $IMAGE_NAME not found. Building...${NC}"
     if ! docker build -t "$IMAGE_NAME" ..; then
         echo -e "${RED}Error: Failed to build Docker image${NC}"
         exit 1
     fi
+else
+    echo -e "${GREEN}Using existing image: $IMAGE_NAME${NC}"
+    echo -e "${YELLOW}Note: If healthcheck tests fail, rebuild with: $0 --rebuild${NC}"
 fi
 
 # Create test network
@@ -228,11 +244,49 @@ else
 fi
 
 # Run health check
-echo -e "\n${GREEN}Running container health check...${NC}"
-if docker exec "$CONTAINER_NAME" sh -c "command -v nc > /dev/null && nc -z localhost 2525" 2>/dev/null; then
-    echo -e "${GREEN}✓ Health check passed${NC}"
+echo -e "\n${GREEN}Testing container health check...${NC}"
+
+# Check if Docker reports the container as healthy
+echo -e "${YELLOW}Waiting for health check to initialize...${NC}"
+MAX_HEALTH_WAIT=40
+HEALTH_WAIT=0
+HEALTH_STATUS="none"
+while [ $HEALTH_WAIT -lt $MAX_HEALTH_WAIT ]; do
+    HEALTH_STATUS=$(docker inspect --format='{{.State.Health.Status}}' "$CONTAINER_NAME" 2>/dev/null || echo "none")
+    if [ "$HEALTH_STATUS" = "healthy" ]; then
+        echo -e "${GREEN}✓ Container health check: healthy${NC}"
+        break
+    elif [ "$HEALTH_STATUS" = "unhealthy" ]; then
+        echo -e "${RED}✗ Container health check: unhealthy${NC}"
+        echo -e "${YELLOW}Health check logs:${NC}"
+        docker inspect --format='{{range .State.Health.Log}}{{.Output}}{{end}}' "$CONTAINER_NAME"
+        exit 1
+    elif [ "$HEALTH_STATUS" = "starting" ]; then
+        echo -e "${YELLOW}Health check status: starting (${HEALTH_WAIT}s)${NC}"
+    elif [ "$HEALTH_STATUS" = "none" ]; then
+        echo -e "${RED}✗ No health check configured in container${NC}"
+        echo -e "${YELLOW}The Docker image was built without HEALTHCHECK instruction.${NC}"
+        echo -e "${YELLOW}Rebuild the image with: $0 --rebuild${NC}"
+        echo -e "${YELLOW}Or manually: docker build -t $IMAGE_NAME ..${NC}"
+        exit 1
+    fi
+    sleep 2
+    HEALTH_WAIT=$((HEALTH_WAIT + 2))
+done
+
+if [ $HEALTH_WAIT -ge $MAX_HEALTH_WAIT ] && [ "$HEALTH_STATUS" != "healthy" ]; then
+    echo -e "${RED}✗ Health check did not become healthy within ${MAX_HEALTH_WAIT}s (status: ${HEALTH_STATUS})${NC}"
+    exit 1
+fi
+
+# Manually verify the health check command works
+echo -e "${YELLOW}Verifying health check command...${NC}"
+if docker exec "$CONTAINER_NAME" sh -c "nc -z localhost 2525" 2>/dev/null; then
+    echo -e "${GREEN}✓ Health check command (nc -z localhost 2525) works${NC}"
 else
-    echo -e "${YELLOW}⚠ Health check tool not available (nc), but container is running${NC}"
+    echo -e "${RED}✗ Health check command failed${NC}"
+    echo -e "${YELLOW}This may indicate netcat is not installed in the container.${NC}"
+    exit 1
 fi
 
 # Test with authentication
