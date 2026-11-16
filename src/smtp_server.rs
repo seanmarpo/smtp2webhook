@@ -2,7 +2,7 @@ use crate::email::Email;
 use crate::webhook::WebhookClient;
 use anyhow::Result;
 use log::{error, info, warn};
-use mail_parser::{MessageParser, MimeHeaders};
+use mail_parser::MessageParser;
 use std::sync::Arc;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::{TcpListener, TcpStream};
@@ -252,7 +252,7 @@ fn parse_email(from: &str, to: &[String], raw_data: &str) -> Option<Email> {
 
     // Extract attachment filenames
     let mut attachments = Vec::new();
-    for part in &message.parts {
+    for part in message.root().parts() {
         if let Some(filename) = part.attachment_name() {
             attachments.push(filename.to_string());
         }
